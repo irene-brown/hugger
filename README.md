@@ -1,6 +1,6 @@
 **************************************************************************
 # hugger
-Huggingface colourful client in terminal.
+Fancy huggingface client.
 
 ## Build
 In order to build Hugger for the current platform you can run:
