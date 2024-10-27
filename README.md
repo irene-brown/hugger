@@ -1,3 +1,9 @@
+
+![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
+![Version](https://img.shields.io/badge/version-0.1.0-brightgreen.svg)
+![Issues](https://img.shields.io/github/issues/irene-brown/hugger.svg)
+![Coverage](https://img.shields.io/codecov/c/github/irene-brown/hugger.svg)
+
 **************************************************************************
 # hugger
 Fancy huggingface client.
