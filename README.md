@@ -47,7 +47,7 @@ $ ./hugger repo-files -repo-id '<your_repo_id>' -action delete -file unused_file
 $ ./hugger meta -repo-id '<your_repo_id>' -repo-type model -token "hf_<your_token_here>"
 ```
 
-## Final words
+## Contribution
 I hope you like this application and it will be useful to you. If you know how to wider its functionality or make code better,
 feel free to open an issue or a pull request.
 
