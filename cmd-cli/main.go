@@ -4,19 +4,29 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"io/fs"
 	"strings"
 	api "hugger/apiv2"
+	"runtime"
 	"github.com/fatih/color"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
-	progressbar "github.com/schollz/progressbar/v3"
+	"path/filepath"
+	"encoding/json"
 )
 
+type HError struct {
+	Error	string	`json:"error"`
+}
+
 func main() {
+
+	// check for updates
+	api.UpdateApp()
+
 	if len(os.Args) < 2 {
 		printHelp()
 		os.Exit(1)
 	}
+
 
 	switch os.Args[1] {
 	case "help":
@@ -29,6 +39,8 @@ func main() {
 		handleDownload()
 	case "upload":
 		handleUpload()
+	case "repo":
+		handleRepo()
 	case "repo-files":
 		handleRepoFiles()
 	case "meta":
@@ -57,11 +69,20 @@ func printHelp() {
 	fmt.Println("      -repo-type      Type of the repository")
 	fmt.Println("      -token          A User Access Token generated from https://huggingface.co/settings/tokens")
 	fmt.Println("")
+	fmt.Println("  repo                Perform actions on repository")
+	fmt.Println("    Arguments:")
+	fmt.Println("      -repo-id        Repository ID")
+	fmt.Println("      -repo-type      Type of the repository")
+	fmt.Println("      -action         Action to perform on repo files ({delete,create})")
+	fmt.Println("      -token          A User Access Token generated from https://huggingface.co/settings/tokens")
+	fmt.Println("      -private        Create/delete private repository")
+	fmt.Println("")
 	fmt.Println("  repo-files          Perform actions on repository files")
 	fmt.Println("    Arguments:")
 	fmt.Println("      -repo-id        Repository ID")
-	fmt.Println("      -action         Action to perform on repo files")
-	fmt.Println("      -file           File to do action with")
+	fmt.Println("      -repo-type      Type of the repository")
+	fmt.Println("      -action         Action to perform on repo files ({delete,list})")
+	fmt.Println("      -file           File to do action with. Optionally, you can pass a directory name here")
 	fmt.Println("      -token          A User Access Token generated from https://huggingface.co/settings/tokens")
 	fmt.Println("")
 	fmt.Println("  meta                Show meta information about repository")
@@ -85,37 +106,15 @@ func handleMeta() {
 		fmt.Println("meta subcommand requires repo_id, repo-type and token arguments")
 		os.Exit(1)
 	}
-
-	client := api.HuggingFaceClient{ *token }
-	meta, err := client.GetMetadata( *repoType, *repoID )
-	if err != nil {
-		fmt.Println("Error: failed to get metadata for " + *repoID + " :", err)
-	} else {
-
-
-		description := strings.Replace( strings.Replace( meta.Description, "\n\n", "\n", -1 ), "\n\t\n", "\n", -1 )
-
-		tw := table.NewWriter()
-		tw.AppendHeader( table.Row{ meta.Type[3:] + " " + meta.Name + " by " + meta.Creator["name"] } )
-		tw.AppendRow( table.Row{ "URL", meta.URL } )
-		tw.AppendRow( table.Row{ "License", meta.License } )
-		tw.AppendRow( table.Row{ "Description", description } )
-		
-		kw := ""
-		for _, k := range meta.Keywords {
-			if strings.Contains( k, "Region" ) {
-				k = k[ strings.Index(k, "Region") :]
-			}
-			kw += k + " "
+	if err := api.ServeRequest( "meta", *repoID, *repoType, *token, "", nil, false ); err != nil {
+		var e HError
+		if nerr := json.Unmarshal( []byte(err.Error()), &e ); nerr != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Error:", e.Error)
 		}
-
-		tw.AppendFooter( table.Row{ "Keywords", kw } )
-		tw.SetStyle( table.StyleColoredDark )
-		tw.Style().Color.Header = text.Colors{ text.BgGreen, text.FgBlack }
-		tw.Style().Color.Footer = text.Colors{ text.BgGreen, text.FgBlack }
-
-		fmt.Printf("%s\n", tw.Render())
 	}
+
 }
 
 
@@ -132,22 +131,16 @@ func handleDownload() {
 		os.Exit(1)
 	}
 
-	client := api.HuggingFaceClient{ *token }
-	files := strings.Split( *filenames, "," )
-	bar := progressbar.Default( int64(len(files)) )
-
-	for _, file := range files {
-		data, err := client.DownloadFile( *repoType, *repoID, file )
-		if err != nil {
-			fmt.Println("Error downloading file:", err)
-			os.Exit(2)
-		}else {
-			if err := os.WriteFile( file, data, 0666 ); err != nil {
-				fmt.Println("Error saving file:", err)
-				os.Exit(2)
-			}
+	files := strings.Split( *filenames, "," ) //retrieveFiles( *filenames )
+	if err := api.ServeRequest( "download", *repoID, *repoType, *token, "", files, false ); err != nil {
+		fmt.Println("")
+		var e HError
+		if nerr := json.Unmarshal( []byte(err.Error()), &e ); nerr != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Error:", e.Error)
 		}
-		bar.Add(1)
+
 	}
 }
 
@@ -164,24 +157,41 @@ func handleUpload() {
 		fmt.Println("upload subcommand requires repo_id, filenames, and repo-type arguments")
 		os.Exit(1)
 	}
-
-	client := api.HuggingFaceClient{ *token }
-	files := strings.Split( *filenames, ",")
-	bar := progressbar.Default( int64(len(files)) )
-
-	for _, file := range files {
-		contents, err := os.ReadFile( file )
-		if err != nil {
-			fmt.Println("Error reading file", file, ":", err)
-			os.Exit(2)
+	
+	files := retrieveFiles( *filenames )
+	if err := api.ServeRequest( "upload", *repoID, *repoType, *token, "", files, false ); err != nil {
+		fmt.Println("")
+		var e HError
+		if nerr := json.Unmarshal( []byte(err.Error()), &e ); nerr != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Error:", e.Error)
 		}
+	}
+}
 
+func handleRepo() {
+	repo := flag.NewFlagSet("repo", flag.ExitOnError)
+	repoID := repo.String("repo-id", "", "Repository ID")
+	repoType := repo.String("repo-type", "", "Type of the repository")
+	action := repo.String("action", "", "Action to perform on repo files")
+	token := repo.String("token", "", "User Access Token generated from https://huggingface.co/settings/tokens")
+	private := repo.Bool("private", false, "Flag for private repositories")
 
-		if err := client.UploadFile( *repoType, *repoID, file, contents ); err != nil {
-			fmt.Println("Error downloading file:", err)
-			os.Exit(2)
+	repo.Parse( os.Args[2:] )
+
+	if *repoID == "" || *repoType == "" || *action == "" || *token == "" {
+		fmt.Println("repo subcommand requires repo-id,repo-type, action and token arguments")
+		os.Exit(1)
+	}
+	if err := api.ServeRequest( "repo", *repoID, *repoType, *token, *action, nil, *private ); err != nil {
+		//fmt.Println("")
+		var e HError
+		if nerr := json.Unmarshal( []byte(err.Error()), &e ); nerr != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Error:", e.Error)
 		}
-		bar.Add(1)
 	}
 }
 
@@ -189,76 +199,136 @@ func handleRepoFiles() {
 
 	repoFiles := flag.NewFlagSet("repo-files", flag.ExitOnError)
 	repoID := repoFiles.String("repo-id", "", "Repository ID")
+	repoType := repoFiles.String("repo-type", "", "Type of the repository")
 	action := repoFiles.String("action", "", "Action to perform on repo files")
-	file := repoFiles.String("file", "", "File to do some action with")
+	file := repoFiles.String("file", "", "File to do some action with. Optionally, you can pass directory here")
 	token := repoFiles.String("token", "", "User Access Token generated from https://huggingface.co/settings/tokens")
 	repoFiles.Parse( os.Args[2:] )
 
-	if *repoID == "" || *action == "" || *token == "" || *file == "" {
-		fmt.Println("repo-files subcommand requires repo_id and action arguments")
+	if *repoID == "" || *repoType == "" || *action == "" || *token == "" {
+		fmt.Println("repo-files subcommand requires repo-id, repo-type, token and action arguments")
 		os.Exit(1)
 	}
-
-	client := api.HuggingFaceClient{ *token }
-	switch *action {
-	case "delete":
-		if err := client.DeleteFile( "dataset", *repoID, *file ); err != nil {
-			fmt.Println("Failed to delete file:", err)
+	files := retrieveFiles( *file )
+	if err := api.ServeRequest( "repo-files", *repoID, *repoType, *token, *action, files, false ); err != nil {
+		var e HError
+		if nerr := json.Unmarshal( []byte(err.Error()), &e ); nerr != nil {
+			fmt.Println(err)
 		} else {
-			fmt.Println("File successfully deleted")
+			fmt.Println("Error:", e.Error)
 		}
-	default:
-		fmt.Println("Error: no such action:", *action)
-		fmt.Println("Available actions: {delete}")
 	}
 }
 
-func Banner() {
-	lightyellow := color.New(color.FgCyan, color.Italic).SprintFunc()
-	yellow := color.New( color.FgYellow, color.Bold ).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
-	lightred := color.New(color.FgRed, color.Bold).SprintFunc()
-	white := color.New(color.FgWhite).SprintFunc()
-	black := color.New(color.FgBlack).SprintFunc()
 
-	banner := `                                                                                                                               
-                                @@@@@@@@@@@@@@@@@                               
-                          @@@@@@@@%###########&@@@@@@@@@                        
-                     @@@@@@######%%%%%%%%%%%%%%%######@@@@@@                    
-                  @@@@@####%%%%%%%%%%%%%%%%%%%%%%%%%%%####@@@@@                 
-                @@@@###%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%###@@@@@              
-              @@@###%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%###@@@@            
-            @@@###%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%###@@@           
-           @@@##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%##@@@@         
-         @@@###%%%%%%%%%%%%.....%%%%%%%%%%%%%%%%.....%%%%%%%%%%%%%###@@@        
-        @@@###%%%%%%%%%%%%........%%%%%%%%%%%%........%%%%%%%%%%%%%##%@@@       
-        @@@##%%%%%%#####%%....%%.%%%%%%%%%%%%%%.%%....%%%#####%%%%%%##@@@@      
-       @@@##%%%%%%%#####%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%####%%%%%%%##@@@      
-       @@@##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%##@@@      
-       @@@##%%%%%%%%%%%%%%%%%%,%%%%%%%%%%%%%%%%%%,,%%%%%%%%%%%%%%%%%%##@@@      
-       @@@##%%%%%%%%%%%%%%%%%%,,,,,,,%%%%%%%,,,,,,,%%%%%%%%%%%%%%%%%%##@@@      
-       @@@##%%%%%%%%%%%%%%%%%%,,,,,,,,,,,,,,,,,,,,%%%%%%%%%%%%%%%%%%%##@@@      
-        @@@##%#####%%%%%%%%%%%%%,,,,///,,,///,,,,%%%%%%%%%%%%%%#######@@@@      
-     @@@@@@####%%%###%######%%%%%%/////////////%%%%%%######%###%%%%###@@@@@@    
-    @@@########%%%%%###%%%%###%%%%%%%%%%%%%%%%%%%%%%##%%%%###%%%%%########@@@@  
-    @@###%%%%%####%%%%##%%%%###%%%%%%%%%%%%%%%%%%%###%%%%##%%%%%###%%%%%%##@@@  
-   @@@@####%%%%%%###%%%###%%%%###%%%%%%%%%%%%%%%###%%%%###%%%###%%%%%%####@@@@  
-   @@###%%%####%%%%%##%%%%%%%%%%###%%%%%%%%%%%###%%%%%%%%%%##%%%%%####%%%%##@@@ 
-   @@@###%%%%%%%###%%%%%%%%%%%%%%%##%%%%%%%%%##%%%%%%%%%%%%%%%%##%%%%%%%###@@@@ 
-   @@@##%%%####%%%%%%%%%%%%%%%%%%%%##%%%%%%%##%%%%%%%%%%%%%%%%%%%%####%%%###@@@ 
-   @@@###%%%%%%%%%%%%%%%%%%%%%%%%%##%%%%%%%%%##%%%%%%%%%%%%%%%%%%%%%%%%%###@@@@ 
-     @@@@######%%%%%%%%%%%%%%%%%#################%%%%%%%%%%%%%%%%%######@@@@@   
-        @@@@@@@@################%@@@@@@@@@@@@@@@@################@@@@@@@@@      
-              @@@@@@@@@@@@@@@@@@@@             @@@@@@@@@@@@@@@@@@@@@            
-                                                                                `
-	lines := strings.Split( banner, "\n" )
+func retrieveFiles( filenames string ) []string {
+
+	res := []string{}
+	tmpres := strings.Split( filenames, "," )
+	for _, fn := range tmpres {
+		
+		fileInfo, err := os.Stat(fn)
+		if err == nil {
+			if fileInfo.IsDir() {
+				// recursively retrieve all files from folder
+				dirfiles := listAllFiles( fn )
+				if dirfiles != nil {
+					res = append( res, dirfiles... )
+				} else {
+					res = append( res, fn )
+				}
+			} else {
+				res = append( res, fn )
+			}
+		} else {
+			res = append( res, fn )
+		}
+	}
+
+
+	if len(res) == 0 {
+		res = tmpres
+	}
+	return res
+}
+
+func listAllFiles( folder string ) []string {
+
+	res := []string{}
+
+	err := filepath.WalkDir( folder, func (path string, d fs.DirEntry, err error) error {
+		if path != folder {
+			res = append( res, path )
+		}
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+	return res
+}
+
+func isTerminal() bool {
+	switch runtime.GOOS {
+		case "windows":
+			return os.Getenv("TERM") == "xterm" || os.Getenv("ANSICON") != ""
+		case "darwin", "linux":
+			return true
+		default:
+			return false
+	}
+}
+
+
+func Banner() {
+
+	lines := []string{"",                                                                                                                               
+"                                @@@@@@@@@@@@@@@@@                               ",
+"                          @@@@@@@@#############@@@@@@@@@                        ",
+"                     @@@@@@######%%%%%%%%%%%%%%%######@@@@@@                    ",
+"                  @@@@@####%%%%%%%%%%%%%%%%%%%%%%%%%%%####@@@@@                 ",
+"                @@@@###%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%###@@@@@              ",
+"              @@@###%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%###@@@@            ",
+"            @@@###%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%###@@@           ",
+"           @@@##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%##@@@@         ",
+"         @@@###%%%%%%%%%%%%.....%%%%%%%%%%%%%%%%.....%%%%%%%%%%%%%###@@@        ",
+"        @@@###%%%%%%%%%%%%........%%%%%%%%%%%%........%%%%%%%%%%%%%###@@@       ",
+"        @@@##%%%%%%#####%%....%%.%%%%%%%%%%%%%%.%%....%%%#####%%%%%%##@@@@      ",
+"       @@@##%%%%%%%#####%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%####%%%%%%%##@@@      ",
+"       @@@##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%##@@@      ",
+"       @@@##%%%%%%%%%%%%%%%%%%,%%%%%%%%%%%%%%%%%%,,%%%%%%%%%%%%%%%%%%##@@@      ",
+"       @@@##%%%%%%%%%%%%%%%%%%,,,,,,,%%%%%%%,,,,,,,%%%%%%%%%%%%%%%%%%##@@@      ",
+"       @@@##%%%%%%%%%%%%%%%%%%,,,,,,,,,,,,,,,,,,,,%%%%%%%%%%%%%%%%%%%##@@@      ",
+"        @@@##%#####%%%%%%%%%%%%%,,,,///,,,///,,,,%%%%%%%%%%%%%%#######@@@@      ",
+"     @@@@@@####%%%###%######%%%%%%/////////////%%%%%%######%###%%%%###@@@@@@    ",
+"    @@@########%%%%%###%%%%###%%%%%%%%%%%%%%%%%%%%%%##%%%%###%%%%%########@@@@  ",
+"    @@###%%%%%####%%%%##%%%%###%%%%%%%%%%%%%%%%%%%###%%%%##%%%%%###%%%%%%##@@@  ",
+"   @@@@####%%%%%%###%%%###%%%%###%%%%%%%%%%%%%%%###%%%%###%%%###%%%%%%####@@@@  ",
+"   @@###%%%####%%%%%##%%%%%%%%%%###%%%%%%%%%%%###%%%%%%%%%%##%%%%%####%%%%##@@@ ",
+"   @@@###%%%%%%%###%%%%%%%%%%%%%%%##%%%%%%%%%##%%%%%%%%%%%%%%%%##%%%%%%%###@@@@ ",
+"   @@@##%%%####%%%%%%%%%%%%%%%%%%%%##%%%%%%%##%%%%%%%%%%%%%%%%%%%%####%%%###@@@ ",
+"   @@@###%%%%%%%%%%%%%%%%%%%%%%%%%##%%%%%%%%%##%%%%%%%%%%%%%%%%%%%%%%%%%###@@@@ ",
+"     @@@@######%%%%%%%%%%%%%%%%%#################%%%%%%%%%%%%%%%%%######@@@@@   ",
+"        @@@@@@@@#################@@@@@@@@@@@@@@@@################@@@@@@@@@      ",
+"              @@@@@@@@@@@@@@@@@@@@             @@@@@@@@@@@@@@@@@@@@@            ",
+"                                                                                " }
 	for _, l := range lines {
-		l = strings.Replace(l, "@", white("@"), -1 )
-		l = strings.Replace(l, "%", yellow("%"), -1)
-		l = strings.Replace(l, "#", lightyellow("#"), -1)
-		l = strings.Replace(l, ",", red(","), -1)
-		l = strings.Replace(l, "/", lightred("/"), -1)
-		l = strings.Replace(l, ".", black("@"), -1)
-		fmt.Println(l)
+		if isTerminal() { // if terminal supports ANSI colors, make banner prettier
+
+			lightyellow := color.New(color.FgCyan, color.Italic).SprintFunc()
+			yellow := color.New( color.FgYellow, color.Bold ).SprintFunc()
+			red := color.New(color.FgRed).SprintFunc()
+			lightred := color.New(color.FgRed, color.Bold).SprintFunc()
+			white := color.New(color.FgWhite).SprintFunc()
+			black := color.New(color.FgBlack).SprintFunc()
+
+			l = strings.Replace(l, "@", white("@"), -1 )
+			l = strings.Replace(l, "%", yellow("%"), -1)
+			l = strings.Replace(l, "#", lightyellow("#"), -1)
+			l = strings.Replace(l, ",", red(","), -1)
+			l = strings.Replace(l, "/", lightred("/"), -1)
+			l = strings.Replace(l, ".", black("@"), -1)
+		}
+		fmt.Println( l )
 	}
 }
