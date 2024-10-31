@@ -1,12 +1,21 @@
-
+![Banner](https://github.com/irene-brown/hugger/blob/main/hugger_banner.jpeg?raw=true)
+**************************************************************************
+# hugger
+**************************************************************************
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
 ![Version](https://img.shields.io/badge/version-0.1.0-brightgreen.svg)
 ![Issues](https://img.shields.io/github/issues/irene-brown/hugger.svg)
 ![Coverage](https://img.shields.io/codecov/c/github/irene-brown/hugger.svg)
 
+
 **************************************************************************
-# hugger
-Fancy huggingface client.
+Unofficial Hugging Face client with a dash of personality. Hugger brings a touch of colour and flair to your Hugging Face experience, making it easier and more enjoyable to interact with the popular transformer models, datasets, spaces. It also allows to do the same with your private repositories.
+
+## Features
+- Colourful interface
+- Easy model/dataset/space interaction and management
+- Fast and reliable
+
 
 ## Build
 In order to build Hugger for the current platform you can run:
@@ -50,14 +59,31 @@ $ ./hugger download -repo-id 'username/dataset-example' -filenames my_dataset_00
 $ ./hugger upload -repo-id 'username/dataset-example' -filenames my_dataset_0001.parquet,my_dataset_0002.parquet -repo-type dataset -token "hf_<your_token_here>"
 
 # perform actions on files in repo:
+# delete file unused_file.test
 $ ./hugger repo-files -repo-id '<your_repo_id>' -action delete -file unused_file.test -token "hf_<your_token_here>"
+# list files in the / folder of repository
+$ ./hugger repo-files -repo-id '<your_repo_id>' -action list -token "hf_<your_token_here>"
+# list files in the /model folder of repository
+$ ./hugger repo-files -repo-id '<your_repo_id>' -action list -file model -token "hf_<your_token_here>"
 
 # show meta info about repository
 $ ./hugger meta -repo-id '<your_repo_id>' -repo-type model -token "hf_<your_token_here>"
 ```
 
 ## Contribution
-I hope you like this application and it will be useful to you. If you know how to wider its functionality or make code better,
-feel free to open an issue or a pull request.
 
+If you'd like to contribute to Hugger, please follow these steps:
+
+- Fork the repository and create a new branch for your feature or bug fix
+- Make your changes and commit them with a clear and descriptive commit message
+- Open a pull request and describe the changes you've made
+
+The contribution in the following areas are welcome:
+
+- Bug fixes and stability improvements
+- New features and model integrations
+- UI/UX enhancements and customizations
+- Documentation and testing improvements
+
+Thanks for considering a contribution to Hugger!
 **************************************************************************
