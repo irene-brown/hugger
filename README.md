@@ -42,7 +42,8 @@ $ export PATH=$PATH:`pwd`/cmd-cli/hugger
 In Windows you must do almost the same: just include binary in your `%PATH%`.
 
 
-Alternatively you can download hugger from release assets.
+> [!NOTE]
+> Alternatively you can download hugger from release assets.
 
 ## Usage
 Examples of usage:
