@@ -17,7 +17,11 @@ Unofficial Hugging Face client with a dash of personality. Hugger brings a touch
 - Fast and reliable
 
 
-## Build
+## Build && install
+
+> [!NOTE]
+> You can download the latest version of application ![here](https://github.com/irene-brown/hugger/releases)
+
 In order to build Hugger for the current platform you can run:
 ```bash
 make build
@@ -33,17 +37,13 @@ make build-windows
 
 The program in located in /cmd-cli directory.
 
-## Install
+
 In UNIX-like systems you must move cmd-cli/hugger to any directory in `$PATH` or you can optionally include Hugger in your `$PATH` environmental variable:
 ```bash
 $ export PATH=$PATH:`pwd`/cmd-cli/hugger
 ```
 
 In Windows you must do almost the same: just include binary in your `%PATH%`.
-
-
-> [!NOTE]
-> Alternatively you can download a release of Hugger.
 
 ## Usage
 Examples of usage:
