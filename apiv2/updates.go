@@ -35,6 +35,10 @@ func checkForUpdate() (string, error) {
 
 func downloadUpdate(version string) error {
 	downloadURL := fmt.Sprintf("%s/%s/releases/download/%s/%s_%s", updatesBaseURL, appName, version, appName, runtime.GOOS)
+	if runtime.GOOS == "windows" {
+		// windows-only extension
+		downloadURL += ".exe"
+	}
 	resp, err := http.Get(downloadURL)
 	if err != nil {
 		return err
