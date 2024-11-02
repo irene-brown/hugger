@@ -7,6 +7,7 @@ MAIN_FILE = $(SRC_DIR)/main.go
 BUILD_DIR = build
 LINUX_BIN = $(BUILD_DIR)/$(APP_NAME)
 WINDOWS_BIN = $(BUILD_DIR)/$(APP_NAME).exe
+DARWIN_BIN=$(BUILD_DIR)/$(APP_NAME)
 
 # Create build directory if it doesn't exist
 .PHONY: all
@@ -24,6 +25,10 @@ build-windows:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=windows GOARCH=amd64 go build -o $(WINDOWS_BIN) $(MAIN_FILE)
 
+.PHONY
+build-darwin:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=darwin GOARCH=amd64 go build -o $(DARWIN_BIN) $(MAIN_FILE)
 # Build for both platforms
 .PHONY: build
 build: build-linux build-windows
