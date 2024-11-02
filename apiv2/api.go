@@ -1,13 +1,13 @@
 package apiv2
 
 import (
-	"strings"
 	"bytes"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -330,4 +330,50 @@ func (client *HuggingFaceClient) doRequest(req *http.Request) (*http.Response, e
 		return nil, fmt.Errorf("error: %s", body)
 	}
 	return resp, nil
+}
+
+func (client *HuggingFaceClient) ListFilesInRepo(repoType, repoName, path string, recursive bool) ([]string, error) {
+	url := fmt.Sprintf("%s/api/%s/%s/tree/main", baseURL, repoType, repoName)
+
+	if len(path) > 0 {
+		url += "/" + path
+	}
+
+	// Allow the user to select whether they wish to copy just the files from directory or all the files including the ones in subdirectories
+	if recursive {
+		url += "?recursive=true"
+	}
+	
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+client.APIKey)
+
+	clientHTTP := &http.Client{}
+	resp, err := clientHTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("error: received status code %d, response %s", resp.StatusCode, body)
+	}
+
+	var files []HFFile
+    if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
+        return nil, err
+    }
+
+	var fileList []string
+    for _, file := range files {
+        if file.Type == "file" {
+            fileList = append(fileList, file.Path)
+        }
+    }
+
+	return fileList, nil
 }
