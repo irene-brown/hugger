@@ -69,7 +69,7 @@ func (client *HuggingFaceClient) CreateRepo(repoType, datasetName string) error 
 	url := fmt.Sprintf("%s/api/repos/create", baseURL)
 	parts := strings.Split(datasetName, "/")
 	if len(parts) != 2 {
-		return fmt.Errorf("Oops! The repo name seems off; please use 'username/repo-name'")
+		return fmt.Errorf("repo name must be in format 'username/repo-name'")
 	}
 
 	payload := HFRepo{
@@ -82,14 +82,14 @@ func (client *HuggingFaceClient) CreateRepo(repoType, datasetName string) error 
 	data, _ := json.Marshal(payload)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		return fmt.Errorf("Could not create repository request: %v", err)
+		return fmt.Errorf("could not create repository request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+client.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	_, err = client.doRequest(req)
 	if err != nil {
-		return fmt.Errorf("Repo creation failed: %v", err)
+		return fmt.Errorf("repo creation failed: %v", err)
 	}
 	fmt.Println("✨ Success! Your new repo is ready for action.")
 	return nil
@@ -109,14 +109,14 @@ func (client *HuggingFaceClient) UploadFile(repoType, datasetName, filePath stri
 	data, _ := json.Marshal(ufiles)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		return fmt.Errorf("Failed to prepare upload: %v", err)
+		return fmt.Errorf("failed to prepare upload: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+client.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.doRequest(req)
 	if err != nil {
-		return fmt.Errorf("Pre-upload request failed: %v", err)
+		return fmt.Errorf("pre-upload request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -144,14 +144,14 @@ func (client *HuggingFaceClient) UploadFile(repoType, datasetName, filePath stri
 
 	req, err = http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		return fmt.Errorf("File upload request failed: %v", err)
+		return fmt.Errorf("file upload request failed: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+client.APIKey)
 	req.Header.Set("Content-Type", "application/x-ndjson")
 
 	_, err = client.doRequest(req)
 	if err != nil {
-		return fmt.Errorf("File upload failed: %v", err)
+		return fmt.Errorf("file upload failed: %v", err)
 	}
 	fmt.Println("🚀 File uploaded successfully!")
 	return nil
@@ -162,11 +162,11 @@ func (client *HuggingFaceClient) doRequest(req *http.Request) (*http.Response, e
 	clientHTTP := &http.Client{}
 	resp, err := clientHTTP.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Request failed: %v", err)
+		return nil, fmt.Errorf("request failed: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Received error: %s", body)
+		return nil, fmt.Errorf("received error: %s", body)
 	}
 	return resp, nil
 }
@@ -175,13 +175,13 @@ func (client *HuggingFaceClient) DownloadFile(repoType, repoName, filePath strin
 	url := fmt.Sprintf("%s/%s/%s/resolve/main/%s", baseURL, repoType+"s", repoName, filePath)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create download request: %v", err)
+		return nil, fmt.Errorf("failed to create download request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+client.Token)
 
 	resp, err := client.doRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to download file: %v", err)
+		return nil, fmt.Errorf("failed to download file: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -195,7 +195,7 @@ func (client *HuggingFaceClient) DeleteRepo(repoName string) error {
 
 	req, err := http.NewRequest("DELETE", url, bytes.NewBuffer(data))
 	if err != nil {
-		return fmt.Errorf("Failed to create delete request: %v", err)
+		return fmt.Errorf("failed to create delete request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+client.Token)
 	req.Header.Set("Content-Type", "application/json")
@@ -208,7 +208,7 @@ func (client *HuggingFaceClient) DeleteFile(repoType, repoName, filePath string)
 	url := fmt.Sprintf("%s/api/%s/%s/delete/main/%s", baseURL, repoType+"s", repoName, filePath)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to create delete file request: %v", err)
+		return fmt.Errorf("failed to create delete file request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+client.Token)
 
@@ -224,19 +224,19 @@ func (client *HuggingFaceClient) ListFilesInRepo(repoType, repoName, path string
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create list files request: %v", err)
+		return nil, fmt.Errorf("failed to create list files request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+client.Token)
 
 	resp, err := client.doRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to list files: %v", err)
+		return nil, fmt.Errorf("failed to list files: %v", err)
 	}
 	defer resp.Body.Close()
 
 	var files []HFFile
 	if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
-		return nil, fmt.Errorf("Failed to parse file list: %v", err)
+		return nil, fmt.Errorf("failed to parse file list: %v", err)
 	}
 
 	var paths []string

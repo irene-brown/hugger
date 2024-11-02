@@ -66,7 +66,7 @@ func ServeRequest(reqType, repoName, repoType, token, action string, files []str
 		}
 
 	default:
-		return fmt.Errorf("Invalid command: %s\n", reqType)
+		return fmt.Errorf("invalid command: %s", reqType)
 	}
 	return nil
 }
