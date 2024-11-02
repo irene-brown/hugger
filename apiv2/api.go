@@ -12,7 +12,7 @@ import (
 
 const (
 	baseURL   = "https://huggingface.co"
-	UserAgent = "hugger-cli/v1.0; HuggingFace unofficial client with flair!"
+	UserAgent = "huggingface-cli/v1.0; None; hf_hub/0.24.6; python/3.12.10; torch/2.4.1; tensorflow/2.17.0"
 )
 
 // Core structs for API operations
