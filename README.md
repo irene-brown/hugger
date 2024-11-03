@@ -1,7 +1,7 @@
 ![Banner](https://github.com/irene-brown/hugger/blob/main/hugger_banner.png?raw=true)
 **************************************************************************
 # hugger
-**************************************************************************
+
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=for-the-badge)
 ![Version](https://img.shields.io/badge/version-0.3.0-brightgreen.svg?style=for-the-badge)
 ![Issues](https://img.shields.io/github/issues/irene-brown/hugger.svg?style=for-the-badge)
