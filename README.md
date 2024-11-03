@@ -2,10 +2,10 @@
 **************************************************************************
 # hugger
 **************************************************************************
-![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
-![Version](https://img.shields.io/badge/version-0.1.0-brightgreen.svg)
-![Issues](https://img.shields.io/github/issues/irene-brown/hugger.svg)
-![Coverage](https://img.shields.io/codecov/c/github/irene-brown/hugger.svg)
+![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-0.3.0-brightgreen.svg?style=for-the-badge)
+![Issues](https://img.shields.io/github/issues/irene-brown/hugger.svg?style=for-the-badge)
+![Coverage](https://img.shields.io/codecov/c/github/irene-brown/hugger.svg?style=for-the-badge)
 
 
 **************************************************************************
@@ -35,12 +35,11 @@ or
 make build-windows
 ```
 
-The program in located in /cmd-cli directory.
+The program is located in build directory.
 
-
-In UNIX-like systems you must move cmd-cli/hugger to any directory in `$PATH` or you can optionally include Hugger in your `$PATH` environmental variable:
+In UNIX-like systems you must move build/hugger to any directory in `$PATH` or you can optionally include Hugger in your `$PATH` environmental variable:
 ```bash
-$ export PATH=$PATH:`pwd`/cmd-cli/hugger
+$ export PATH=$PATH:`pwd`/build/hugger_linux
 ```
 
 In Windows you must do almost the same: just include binary in your `%PATH%`.
@@ -48,7 +47,7 @@ In Windows you must do almost the same: just include binary in your `%PATH%`.
 ## Usage
 Examples of usage:
 ```bash
-# in cmd-cli/ directory
+# in build/ directory
 # show help menu (and fancy banner)
 $ ./hugger -h
 
@@ -80,7 +79,6 @@ If you'd like to contribute to Hugger, please follow these steps:
 - Open a pull request and describe the changes you've made
 
 The contribution in the following areas are welcome:
-
 - Bug fixes and stability improvements
 - New features and model integrations
 - UI/UX enhancements and customizations
