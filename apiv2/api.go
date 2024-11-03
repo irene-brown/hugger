@@ -12,7 +12,8 @@ import (
 
 const (
 	baseURL   = "https://huggingface.co"
-	UserAgent = "huggingface-cli/v1.0; None; hf_hub/0.24.6; python/3.12.10; torch/2.4.1; tensorflow/2.17.0"
+	// TODO: generate user agent according to user's configuration
+	UserAgent = "hugger/v0.3.0; None; hf_hub/0.24.6; python/3.12.10; torch/2.4.1; tensorflow/2.17.0"
 )
 
 // Core structs for API operations
@@ -65,7 +66,7 @@ func NewHuggingFaceClient(apiKey string) *HuggingFaceClient {
 }
 
 // Core API methods
-func (client *HuggingFaceClient) CreateRepo(repoType, datasetName string) error {
+func (client *HuggingFaceClient) CreateRepo(repoType, datasetName string, private bool) error {
 	url := fmt.Sprintf("%s/api/repos/create", baseURL)
 	parts := strings.Split(datasetName, "/")
 	if len(parts) != 2 {
@@ -76,7 +77,7 @@ func (client *HuggingFaceClient) CreateRepo(repoType, datasetName string) error 
 		RepoID:   datasetName,
 		RepoType: repoType,
 		Name:     parts[1],
-		Private:  true,
+		Private:  private,
 	}
 
 	data, _ := json.Marshal(payload)
@@ -89,7 +90,7 @@ func (client *HuggingFaceClient) CreateRepo(repoType, datasetName string) error 
 
 	_, err = client.doRequest(req)
 	if err != nil {
-		return fmt.Errorf("repo creation failed: %v", err)
+		return err //fmt.Errorf("%v", err)
 	}
 	fmt.Println("✨ Success! Your new repo is ready for action.")
 	return nil
@@ -205,89 +206,103 @@ func (client *HuggingFaceClient) DeleteRepo(repoName string) error {
 }
 
 func (client *HuggingFaceClient) DeleteFile(repoType, repoName, filePath string) error {
-	url := fmt.Sprintf("%s/api/%s/%s/delete/main/%s", baseURL, repoType+"s", repoName, filePath)
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create delete file request: %v", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+client.Token)
+	url := fmt.Sprintf("%s/api/%s/%s/commit/main", baseURL, repoType + "s", repoName)
 
-	_, err = client.doRequest(req)
+	kv := KeyValue{
+		"header",
+		map[string]string {
+			"summary": "Delete " + filePath,
+			"description": "",
+		},
+	}
+	data, _ := json.Marshal( kv )
+	kv = KeyValue{
+		"deletedFile",
+		map[string]string {
+			"path": filePath,
+		},
+	}
+	tmp, _ := json.Marshal( kv )
+	data = append( data, 0x0a )
+	data = append(data, tmp...)
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer " + client.APIKey)
+	req.Header.Set("Content-Type", "application/x-ndjson")
+
+	resp, err := client.doRequest(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, err = ioutil.ReadAll( resp.Body )
 	return err
 }
 
 func (client *HuggingFaceClient) ListFilesInRepo(repoType, repoName, path string, recursive bool) ([]string, error) {
-	url := fmt.Sprintf("%s/api/%s/%s/list/main/%s", baseURL, repoType+"s", repoName, path)
-	if recursive {
-		url += "?recursive=1"
-	}
+	// please, do not touch this function.
+	// yes, I know huggingface API has more beautiful way to list files
+	// however when I try to use it I'm getting error 404:
+	// 'Sorry, we can't find the page you are looking for.'
+	
+	// I'll fix this issue as soon as I understand what I'm doing wrong.
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create list files request: %v", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+client.Token)
-
-	resp, err := client.doRequest(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list files: %v", err)
-	}
-	defer resp.Body.Close()
-
-	var files []HFFile
-	if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
-		return nil, fmt.Errorf("failed to parse file list: %v", err)
-	}
-
-	var paths []string
-	for _, file := range files {
-		paths = append(paths, file.Path)
-	}
-	return paths, nil
-}
-
-func (client *HuggingFaceClient) ListFilesInRepo(repoType, repoName, path string, recursive bool) ([]string, error) {
-	url := fmt.Sprintf("%s/api/%s/%s/tree/main", baseURL, repoType, repoName)
-
+	url := fmt.Sprintf("%s/api/%s/%s/tree/main", baseURL, repoType + "s", repoName)
 	if len(path) > 0 {
 		url += "/" + path
 	}
 
-	// Allow the user to select whether they wish to copy just the files from directory or all the files including the ones in subdirectories
-	if recursive {
-		url += "?recursive=true"
-	}
-	
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Set("Authorization", "Bearer "+client.APIKey)
-
+	req.Header.Set("Authorization", "Bearer " + client.APIKey)
 	clientHTTP := &http.Client{}
-	resp, err := clientHTTP.Do(req)
+	resp, err := clientHTTP.Do( req )
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("error: received status code %d, response %s", resp.StatusCode, body)
+		body, _ := ioutil.ReadAll( resp.Body )
+		fmt.Println(string(body))
+		return nil, fmt.Errorf("error: received status code %d, response: %s",
+				resp.StatusCode, body)
+	}
+
+	body, err := ioutil.ReadAll( resp.Body )
+	if err != nil {
+		fmt.Println(string(body))
+		return nil, err
 	}
 
 	var files []HFFile
-    if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
-        return nil, err
-    }
+	if err := json.Unmarshal( body, &files ); err != nil {
+		return nil, err
+	}
 
-	var fileList []string
-    for _, file := range files {
-        if file.Type == "file" {
-            fileList = append(fileList, file.Path)
-        }
-    }
+	var totalFiles []string
+	for _, f := range files {
+		if f.Type == "file" {
+			totalFiles = append( totalFiles, f.Path )
+		} else if f.Type == "directory" {
+			if recursive {
+				dirFiles, err := client.ListFilesInRepo( repoType, repoName, f.Path, recursive )
+				if err != nil {
+					return nil, err
+				}
+				totalFiles = append( totalFiles, dirFiles... )
+			} else {
+				totalFiles = append( totalFiles, f.Path + "/" )
+			}
+		}
+	}
 
-	return fileList, nil
+	return totalFiles, nil
+
+
 }
