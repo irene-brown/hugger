@@ -1,4 +1,4 @@
-![Banner](https://github.com/irene-brown/hugger/blob/main/hugger_banner.jpeg?raw=true)
+![Banner](https://github.com/irene-brown/hugger/blob/main/hugger_banner.png?raw=true)
 **************************************************************************
 # hugger
 **************************************************************************
