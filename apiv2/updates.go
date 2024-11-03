@@ -12,7 +12,7 @@ import (
 const (
 	updatesBaseURL = "https://github.com/irene-brown/"
 	appName        = "hugger"
-	currentVersion = "0.2.0" // Current version of Hugger
+	currentVersion = "0.3.0" // Current version of Hugger
 	// URL to check for the latest version
 	updateURL = "https://raw.githubusercontent.com/irene-brown/hugger/refs/heads/main/VERSION"
 )
