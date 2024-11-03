@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	api "hugger/apiv2"
-
+	huggerLog "hugger/log"
 	"github.com/fatih/color"
 )
 
@@ -42,6 +42,8 @@ func main() {
 		handleRepoFiles()
 	case "meta":
 		handleMeta()
+	case "statistics":
+		handleStatistics()
 	default:
 		fmt.Printf("Unknown subcommand: %s\n", os.Args[1])
 		os.Exit(1)
@@ -88,6 +90,12 @@ func printHelp() {
 	fmt.Println("      -repo-type      Type of repository")
 	fmt.Println("      -token          A User Access Token generated from https://huggingface.co/settings/tokens")
 	fmt.Println()
+	fmt.Println("  statistics          Show statistics for specified repository. Dataset-only feature")
+	fmt.Println("    Arguments:")
+	fmt.Println("      -repo-id        Repository ID")
+	fmt.Println("      -split          Dataset split (e.g. train)")
+	fmt.Println("      -token          A User Access Token generated from https://huggingface.co/settings/tokens")
+	fmt.Println()
 }
 
 func handleMeta() {
@@ -103,7 +111,23 @@ func handleMeta() {
 		os.Exit(1)
 	}
 
-	if err := api.ServeRequest("meta", *repoID, *repoType, *token, "", nil, false); err != nil {
+	if err := api.ServeRequest("meta", *repoID, *repoType, *token, "", "", nil, false); err != nil {
+		handleError(err)
+	}
+}
+
+func handleStatistics() {
+	stat := flag.NewFlagSet("statistics", flag.ExitOnError)
+	repoID := stat.String("repo-id", "", "Repository ID")
+	split := stat.String("split", "", "Dataset split(e.g. train)")
+	token := stat.String("token", "", "User Access Token")
+
+	stat.Parse( os.Args[2:] )
+	if *repoID == "" || *token == "" || *split == "" {
+		fmt.Println("statistics subcommand requires repo-id, split and token arguments")
+		os.Exit(1)
+	}
+	if err := api.ServeRequest( "statistics", *repoID, "dataset", *token, "", *split, nil, false ); err != nil {
 		handleError(err)
 	}
 }
@@ -123,7 +147,7 @@ func handleDownload() {
 	}
 
 	files := strings.Split(*filenames, ",")
-	if err := api.ServeRequest("download", *repoID, *repoType, *token, "", files, false); err != nil {
+	if err := api.ServeRequest("download", *repoID, *repoType, *token, "", "", files, false); err != nil {
 		handleError(err)
 	}
 }
@@ -143,7 +167,7 @@ func handleUpload() {
 	}
 
 	files := retrieveFiles(*filenames)
-	if err := api.ServeRequest("upload", *repoID, *repoType, *token, "", files, false); err != nil {
+	if err := api.ServeRequest("upload", *repoID, *repoType, *token, "", "", files, false); err != nil {
 		handleError(err)
 	}
 }
@@ -163,7 +187,7 @@ func handleRepo() {
 		os.Exit(1)
 	}
 
-	if err := api.ServeRequest("repo", *repoID, *repoType, *token, *action, nil, *private); err != nil {
+	if err := api.ServeRequest("repo", *repoID, *repoType, *token, *action, "", nil, *private); err != nil {
 		handleError(err)
 	}
 }
@@ -184,7 +208,7 @@ func handleRepoFiles() {
 	}
 
 	files := retrieveFiles(*file)
-	if err := api.ServeRequest("repo-files", *repoID, *repoType, *token, *action, files, false); err != nil {
+	if err := api.ServeRequest("repo-files", *repoID, *repoType, *token, *action, "", files, false); err != nil {
 		handleError(err)
 	}
 }
@@ -234,9 +258,9 @@ func listAllFiles(folder string) []string {
 func handleError(err error) {
 	var e HError
 	if nerr := json.Unmarshal([]byte(err.Error()), &e); nerr != nil {
-		fmt.Println("Error:", err)
+		huggerLog.Error( err.Error() ) //fmt.Println("Error:", err)
 	} else {
-		fmt.Println("Error:", e.Error)
+		huggerLog.Error(e.Error)
 	}
 }
 
