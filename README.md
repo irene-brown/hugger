@@ -12,10 +12,10 @@
 Unofficial Hugging Face client with a dash of personality. Hugger brings a touch of colour and flair to your Hugging Face experience, making it easier and more enjoyable to interact with the popular transformer models, datasets, spaces. It also allows to do the same with your private repositories.
 
 ## Features
-- Colourful interface
-- Easy model/dataset/space interaction and management
+- Colorful interface
 - Fast and reliable
-
+- Easy repository interaction and management
+- Advanced features like metadata and statistics viewers
 
 ## Build && install
 
@@ -68,6 +68,9 @@ $ ./hugger repo-files -repo-id '<your_repo_id>' -action list -file model -token 
 
 # show meta info about repository
 $ ./hugger meta -repo-id '<your_repo_id>' -repo-type model -token "hf_<your_token_here>"
+
+# show statistics for dataset
+$ ./hugger statistics -repo-id '<your_repo_id>' -token "hf_<your_token_here>"
 ```
 
 ## Contribution
